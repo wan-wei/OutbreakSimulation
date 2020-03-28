@@ -1,17 +1,29 @@
 import random
 from scipy.stats import expon
 
-N = 100
-M = 1000
+# N = 100
+# M = 1000
+# X = 0.008
+# P_m = 0.9
+# P_d = 0.05
+# K = 10
+# R = 10000
+# T = 500
+# SIZE = N * N
+# INFECTION = int(M * X)
+
+N = 5
+M = 5
 X = 0.008
 P_m = 0.9
 P_d = 0.05
-K = 10
-R = 10000
-T = 500
+K = 3
+R = 10
+T = 10
 SIZE = N * N
-INFECTION = int(M * X)
+INFECTION = 1
 DIRECTIONS = [[-1, -1], [-1, 0], [-1, 1], [0, 1], [1, 1], [1, 0], [1, -1], [0, -1]]
+
 
 class Individual:
     def __init__(self, idx, x, y, stationary, infection, immunity):
@@ -26,7 +38,7 @@ class Individual:
         self.direction = None
 
     def _get_k_period(self):
-        return expon.ppf(random.random(), loc=K - 1)
+        return round(expon.ppf(random.random(), loc=K - 1))
 
     def init_remain_k(self):
         if self.infection:
@@ -43,6 +55,15 @@ class Individual:
     def infected(self):
         self.infection = 1
         self.remain_k = self._get_k_period()
+
+    def print_info(self):
+        print("idx: ", self.idx)
+        print("pos: ", self.x, self.y)
+        print("stationary", self.stationary)
+        print("infection", self.infection)
+        print("immunity", self.immunity)
+        print("remain_k", self.remain_k)
+        print("direction", self.direction)
 
 
 def get_random_list_without_repetition(lo, hi, size):
@@ -61,7 +82,7 @@ def get_direction(x, y, grid):
             possible_directions.append((dx, dy))
     if not possible_directions:
         return None
-    r = random.randint(0, len(possible_directions - 1))
+    r = random.randint(0, len(possible_directions) - 1)
     return possible_directions[r]
 
 
@@ -81,8 +102,8 @@ def generate_population(S):
         pos = random_position[i]
         x = pos // N
         y = pos % N
-        stationary = id in random_stationary # 0 is mobile, 1 is stationary
-        infection = id in random_infection # 0 is healthy, 1 is infected
+        stationary = idx in random_stationary  # 0 is mobile, 1 is stationary
+        infection = idx in random_infection  # 0 is healthy, 1 is infected
         individual = Individual(idx, x, y, stationary, infection, 0)
         population.append(individual)
     return population
@@ -190,16 +211,34 @@ def terminate(population):
 def simulation(S, T):
     population = generate_population(S)
     grid = inverse_mapping(population)
-    for t in T:
-        update_healthy_state(population)
+    for t in range(T):
+        print(">t", t)
+        for individual in population:
+            individual.print_info()
+            print("~~~")
+        for i in range(N):
+            tmp = []
+            for j in range(N):
+                if grid[i][j] is None:
+                    tmp.append(0)
+                else:
+                    tmp.append(1)
+            print(tmp)
+        population = update_healthy_state(population)
+        print("after update healthy")
+        for individual in population:
+            individual.print_info()
+            print("~~~")
         if terminate(population):
             break
         update_state(population, grid)
+        input()
 
 
 if __name__ == '__main__':
-    for run in R:
-        for S in [0, 0.25, 0.5, 0.75, 1.0]:
+    for run in range(R):
+        #for S in [0, 0.25, 0.5, 0.75, 1.0]:
+        for S in [0.5]:
             simulation(S, T)
 
 
