@@ -26,6 +26,7 @@ class Individual:
 
         self.remain_k = self.init_remain_k()
         self.direction = None
+        self.quarantined = False
 
     def _get_k_period(self):
         return round(expon.ppf(random.random(), loc=K-1))
@@ -113,11 +114,18 @@ def update_healthy_state(population):
 
 
 def handle_collision(individual, neighbor):
-    # case 1: both are healthy or both are infected, nothing happens
+    # case 1:
+    # - both are healthy
+    # - both are infected
+    # - individual is infected but quarantined
+    # - neighbor is infected but quarantined
+    # Then nothing happens
     if (not individual.infection and not neighbor.infection) or \
-            (individual.infection and neighbor.infection):
-        pass
-    # case 2: individual is infected
+            (individual.infection and neighbor.infection) or \
+            (individual.infection and individual.quarantined) or \
+            (neighbor.infection and neighbor.quarantined):
+        return
+    # case 2: individual is infected (no quarantined)
     #   case 2.1: if neighbor is healthy and not immunity, then he is infected
     #   case 2.2: if neighbor is healthy and immunity, then nothing happens
     #   case 2.3: if neighbor is infected already, then nothing happens
@@ -128,7 +136,8 @@ def handle_collision(individual, neighbor):
             pass
         elif neighbor.infection:
             pass
-    # case 3: neighbor is infected
+        return
+    # case 3: neighbor is infected (no quarantined)
     #   case 3.1: if individual is healthy and not immunity, then he is infected
     #   case 3.2: if individual is healthy and immunity, then nothing happens
     #   case 3.3: if individual is infected already, then nothing happens
@@ -139,6 +148,7 @@ def handle_collision(individual, neighbor):
             pass
         elif individual.infection:
             pass
+        return
 
 
 def move(individual, next_x, next_y, grid):
@@ -185,6 +195,21 @@ def update_state(population, grid):
             move(individual, next_x, next_y, grid)
 
 
+def test_and_quarantine(population, test_rate):
+    # select test individuals randomly.
+    # If individuals <= test number, then all test
+    test_number = M * test_rate
+    if len(population) <= test_number:
+        test_idx = [i for i in range(len(population))]
+    else:
+        test_idx = get_random_list_without_repetition(0, len(population) - 1, test_number)
+
+    # test and quarantine if infected
+    for idx in test_idx:
+        if population[idx].infection:
+            population[idx].quarantined = True
+
+
 def terminate(population):
     if not population:
         return True
@@ -206,13 +231,29 @@ def simulation(S, T):
     return break_t
 
 
+def simulation_with_quarantine(S, T, test_rate):
+    population = generate_population(S)
+    grid = inverse_mapping(population)
+    break_t = T
+    max_infection = 0
+    for t in range(T):
+        max_infection = max(max_infection, sum([i.infection for i in population]))
+        population = update_healthy_state(population)
+        if terminate(population):
+            break_t = t
+            break
+        test_and_quarantine(population, test_rate)
+        update_state(population, grid)
+    return break_t, max_infection
+
 if __name__ == '__main__':
     for run in range(R):
         print("#run", run)
         st = time.time()
         for S in [0, 0.25, 0.5, 0.75, 1.0]:
-            break_t = simulation(S, T)
-            print("S=%.2f, break T=%d" % (S, break_t))
+            # break_t = simulation(S, T)
+            break_t, max_infection = simulation_with_quarantine(S, T, test_rate=0.1)
+            print("S=%.2f, break T=%d, max_infaction=%d" % (S, break_t, max_infection))
         print("cost time for #run %d: %.2f" % (run, time.time() - st))
 
 
