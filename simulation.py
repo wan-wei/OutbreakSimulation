@@ -150,8 +150,10 @@ def move(individual, next_x, next_y, grid):
 
 def update_state(population, grid):
     for individual in population:
-        if individual.stationary:
+        # stationary or decide not to move
+        if individual.stationary or random.random() >= P_m:
             continue
+
         # --- decide whether need a new direction ---
         need_new_direction_flag = False
         if individual.direction:
