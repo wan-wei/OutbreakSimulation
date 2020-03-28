@@ -17,7 +17,7 @@ M = 5
 X = 0.008
 P_m = 0.9
 P_d = 0.05
-K = 3
+K = 10
 R = 10
 T = 10
 SIZE = N * N
@@ -91,7 +91,7 @@ def generate_population(S):
     random_position = get_random_list_without_repetition(0, SIZE - 1, M)
 
     # generate INFECTION numbers in range[0, M) without repetition
-    random_infection = get_random_list_without_repetition(0, M - 1, INFECTION)
+    random_infection = get_random_list_without_repetition(0, M - 1, 3)
 
     # generate M * S numbers in range[0, M] without repetition
     random_stationary = get_random_list_without_repetition(0, M - 1, M * S)
@@ -137,24 +137,24 @@ def handle_collision(individual, neighbor):
             (individual.infection and neighbor.infection):
         pass
     # case 2: individual is infected
-    #   case 2.1: if neighbor is healthy and not immune, then he is infected
-    #   case 2.2: if neighbor is healthy and immune, then nothing happens
+    #   case 2.1: if neighbor is healthy and not immunity, then he is infected
+    #   case 2.2: if neighbor is healthy and immunity, then nothing happens
     #   case 2.3: if neighbor is infected already, then nothing happens
     if individual.infection:
-        if not neighbor.infection and not neighbor.immune:
+        if not neighbor.infection and not neighbor.immunity:
             neighbor.infected()
-        elif not neighbor.infection and neighbor.immune:
+        elif not neighbor.infection and neighbor.immunity:
             pass
         elif neighbor.infection:
             pass
     # case 3: neighbor is infected
-    #   case 3.1: if individual is healthy and not immune, then he is infected
-    #   case 3.2: if individual is healthy and immune, then nothing happens
+    #   case 3.1: if individual is healthy and not immunity, then he is infected
+    #   case 3.2: if individual is healthy and immunity, then nothing happens
     #   case 3.3: if individual is infected already, then nothing happens
     if neighbor.infection:
-        if not individual.infection and not individual.immune:
+        if not individual.infection and not individual.immunity:
             individual.infected()
-        elif not individual.infection and individual.immune:
+        elif not individual.infection and individual.immunity:
             pass
         elif individual.infection:
             pass
@@ -195,6 +195,8 @@ def update_state(population, grid):
             handle_collision(individual, grid[next_x][next_y])
             individual.direction = get_direction(individual.x, individual.y, grid)
             if individual.direction:
+                next_x = individual.x + individual.direction[0]
+                next_y = individual.y + individual.direction[1]
                 move(individual, next_x, next_y, grid)
         else:
             move(individual, next_x, next_y, grid)
@@ -214,15 +216,16 @@ def simulation(S, T):
     for t in range(T):
         print(">t", t)
         for individual in population:
-            individual.print_info()
-            print("~~~")
+            if individual.infection:
+                print(individual.idx)
+            # print("~~~")
         for i in range(N):
             tmp = []
             for j in range(N):
                 if grid[i][j] is None:
-                    tmp.append(0)
+                    tmp.append(-1)
                 else:
-                    tmp.append(1)
+                    tmp.append(grid[i][j].idx)
             print(tmp)
         population = update_healthy_state(population)
         print("after update healthy")
