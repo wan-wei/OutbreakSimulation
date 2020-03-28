@@ -1,27 +1,17 @@
 import random
+import time
 from scipy.stats import expon
 
-# N = 100
-# M = 1000
-# X = 0.008
-# P_m = 0.9
-# P_d = 0.05
-# K = 10
-# R = 10000
-# T = 500
-# SIZE = N * N
-# INFECTION = int(M * X)
-
-N = 5
-M = 5
+N = 100
+M = 1000
 X = 0.008
 P_m = 0.9
 P_d = 0.05
 K = 10
-R = 10
-T = 10
+R = 10000
+T = 500
 SIZE = N * N
-INFECTION = 1
+INFECTION_NUMBER = int(M * X)
 DIRECTIONS = [[-1, -1], [-1, 0], [-1, 1], [0, 1], [1, 1], [1, 0], [1, -1], [0, -1]]
 
 
@@ -38,7 +28,7 @@ class Individual:
         self.direction = None
 
     def _get_k_period(self):
-        return round(expon.ppf(random.random(), loc=K - 1))
+        return round(expon.ppf(random.random(), loc=K-1))
 
     def init_remain_k(self):
         if self.infection:
@@ -48,22 +38,13 @@ class Individual:
         return remain_k
 
     def recovery(self):
-        self.infection = 0
+        self.infection = False
         self.remain_k = float('inf')
-        self.immunity = 1
+        self.immunity = True
 
     def infected(self):
-        self.infection = 1
+        self.infection = True
         self.remain_k = self._get_k_period()
-
-    def print_info(self):
-        print("idx: ", self.idx)
-        print("pos: ", self.x, self.y)
-        print("stationary", self.stationary)
-        print("infection", self.infection)
-        print("immunity", self.immunity)
-        print("remain_k", self.remain_k)
-        print("direction", self.direction)
 
 
 def get_random_list_without_repetition(lo, hi, size):
@@ -91,7 +72,7 @@ def generate_population(S):
     random_position = get_random_list_without_repetition(0, SIZE - 1, M)
 
     # generate INFECTION numbers in range[0, M) without repetition
-    random_infection = get_random_list_without_repetition(0, M - 1, 3)
+    random_infection = get_random_list_without_repetition(0, M - 1, INFECTION_NUMBER)
 
     # generate M * S numbers in range[0, M] without repetition
     random_stationary = get_random_list_without_repetition(0, M - 1, M * S)
@@ -102,9 +83,9 @@ def generate_population(S):
         pos = random_position[i]
         x = pos // N
         y = pos % N
-        stationary = idx in random_stationary  # 0 is mobile, 1 is stationary
-        infection = idx in random_infection  # 0 is healthy, 1 is infected
-        individual = Individual(idx, x, y, stationary, infection, 0)
+        stationary = idx in random_stationary
+        infection = idx in random_infection
+        individual = Individual(idx, x, y, stationary, infection, False)
         population.append(individual)
     return population
 
@@ -213,36 +194,24 @@ def terminate(population):
 def simulation(S, T):
     population = generate_population(S)
     grid = inverse_mapping(population)
+    break_t = T
     for t in range(T):
-        print(">t", t)
-        for individual in population:
-            if individual.infection:
-                print(individual.idx)
-            # print("~~~")
-        for i in range(N):
-            tmp = []
-            for j in range(N):
-                if grid[i][j] is None:
-                    tmp.append(-1)
-                else:
-                    tmp.append(grid[i][j].idx)
-            print(tmp)
         population = update_healthy_state(population)
-        print("after update healthy")
-        for individual in population:
-            individual.print_info()
-            print("~~~")
         if terminate(population):
+            break_t = t
             break
         update_state(population, grid)
-        input()
+    return break_t
 
 
 if __name__ == '__main__':
     for run in range(R):
-        #for S in [0, 0.25, 0.5, 0.75, 1.0]:
-        for S in [0.5]:
-            simulation(S, T)
+        print("#run", run)
+        st = time.time()
+        for S in [0, 0.25, 0.5, 0.75, 1.0]:
+            break_t = simulation(S, T)
+            print("S=%.2f, break T=%d" % (S, break_t))
+        print("cost time for #run %d: %.2f" % (run, time.time() - st))
 
 
 
